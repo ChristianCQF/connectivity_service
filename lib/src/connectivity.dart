@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 // ==========================================================================
@@ -439,5 +440,32 @@ class ConnectivityService {
 
     // El controller se recreará automáticamente cuando se acceda a instance nuevamente
     _statusController.close();
+  }
+
+  static Widget streamBuilder({
+    Key? key,
+    required Widget Function(
+      BuildContext context,
+      ConnectivityServiceStatus status,
+    )
+    builder,
+    Widget? loadingWidget,
+  }) {
+    return StreamBuilder<ConnectivityServiceStatus>(
+      key: key,
+      stream: instance.onStatusChange,
+      initialData: ConnectivityServiceStatus.disconnected,
+      builder: (context, snapshot) {
+        // Mientras espera el primer dato, muestra un widget de carga o nada
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            snapshot.data == null) {
+          return loadingWidget ?? const SizedBox.shrink();
+        }
+
+        // Entregamos el estado limpio, sin envoltorios de AsyncSnapshot
+        final status = snapshot.data ?? ConnectivityServiceStatus.disconnected;
+        return builder(context, status);
+      },
+    );
   }
 }
