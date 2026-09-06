@@ -442,7 +442,7 @@ class ConnectivityService {
     _statusController.close();
   }
 
-  static Widget streamBuilder({
+  /*static Widget streamBuilder({
     Key? key,
     required Widget Function(
       BuildContext context,
@@ -467,5 +467,61 @@ class ConnectivityService {
         return builder(context, status);
       },
     );
+  }*/
+
+  static Widget streamBuilder({
+    Key? key,
+    required Widget Function(
+      BuildContext context,
+      ConnectivityStatusInfo info, // <-- Aquí está el cambio clave
+    )
+    builder,
+    Widget? loadingWidget,
+  }) {
+    return StreamBuilder<ConnectivityServiceStatus>(
+      key: key,
+      stream: instance.onStatusChange,
+      initialData: ConnectivityServiceStatus.disconnected,
+      builder: (context, snapshot) {
+        // Mientras espera el primer dato, muestra un widget de carga o nada
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            snapshot.data == null) {
+          return loadingWidget ?? const SizedBox.shrink();
+        }
+
+        // 1. Obtenemos el estado crudo
+        final status = snapshot.data ?? ConnectivityServiceStatus.disconnected;
+
+        // 2. Lo convertimos automáticamente en la información completa (Estado + Texto)
+        final info = ConnectivityStatusInfo.from(status);
+
+        // 3. Entregamos la información limpia al builder
+        return builder(context, info);
+      },
+    );
+  }
+}
+
+class ConnectivityStatusInfo {
+  final ConnectivityServiceStatus status;
+  final String text;
+
+  const ConnectivityStatusInfo({required this.status, required this.text});
+
+  /// Fábrica que traduce automáticamente el enum a texto legible.
+  factory ConnectivityStatusInfo.from(ConnectivityServiceStatus status) {
+    final String text;
+    switch (status) {
+      case ConnectivityServiceStatus.connected:
+        text = 'Conectado';
+        break;
+      case ConnectivityServiceStatus.unstable:
+        text = 'Inestable';
+        break;
+      case ConnectivityServiceStatus.disconnected:
+        text = 'Desconectado';
+        break;
+    }
+    return ConnectivityStatusInfo(status: status, text: text);
   }
 }
